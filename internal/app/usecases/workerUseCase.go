@@ -29,7 +29,11 @@ func (s *workerService) CreateWorker(name, jobTitle, departament, password strin
 
 	worker := entities.NewWorker(name, jobTitle, departament, password, accesslevel)
 
-	return worker, s.repo.Create(context.Background(), worker)
+	if err := s.repo.Create(context.Background(), worker); err != nil {
+		return &entities.Worker{}, err
+	}
+
+	return worker, nil
 }
 
 func (s *workerService) GetWokerByUUID(uuid string) (entities.Worker, error) {
@@ -42,4 +46,8 @@ func (s *workerService) GetAllWorkers() ([]entities.Worker, error) {
 
 func (s *workerService) GetAllWorkersByDepartment(department string) ([]entities.Worker, error) {
 	return s.repo.GetAllByDepartment(context.Background(), department)
+}
+
+func (s *workerService) DeleteWorkerByUUID(uuid string) error {
+	return s.repo.DeleteByUUID(context.Background(), uuid)
 }
