@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"pi/internal/adapters/payloads"
 	"pi/internal/app/interfaces/services"
+	"pi/pkg/utils/auth"
+	"pi/pkg/utils/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,19 +20,98 @@ type workerHandler struct {
 	workerService services.WorkerService
 }
 
-func NewHandler(workerService services.WorkerService) Handler {
+func NewWorkerHandler(workerService services.WorkerService) Handler {
 	return &workerHandler{workerService: workerService}
 }
 
 func (h *workerHandler) Register(router *gin.Engine) {
-	workers := router.Group("listworkers")
+	public := router.Group("/login")
 	{
-		workers.POST(loginURL)
-		workers.GET("/:department", h.ListDepartmentHandler)
-		workers.POST("/:department", h.Addworker)
-		workers.PUT("/:id")
-		workers.DELETE("/:id", h.DeleteWorker)
+		public.POST("", h.LoginHandler)
 	}
+
+	protected := router.Group("/listworkers")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.GET("/department/:department", h.ListDepartmentHandler)
+		protected.POST("", h.Addworker)
+		protected.PUT("/:id")
+		protected.DELETE("/:id", h.DeleteWorker)
+	}
+}
+
+func (h *workerHandler) LoginHandler(c *gin.Context) {
+	var loginPayload payloads.LoginPayload
+
+	if err := c.ShouldBindJSON(&loginPayload); err != nil {
+		log.Printf("error binding login request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "incorrect login",
+		})
+		return
+	}
+
+	worker, err := h.workerService.GetWorkerByName(loginPayload.Name)
+	if err != nil {
+		log.Printf("error getting worker: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "incorrect name or password",
+		})
+		return
+	}
+
+	if worker.Password != loginPayload.Password {
+		log.Printf("invalid password for user: %s", loginPayload.Name)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "incorrect name or password",
+		})
+		return
+	}
+
+	token, err := auth.GenerateToken(
+		worker.UUID,
+		worker.Name,
+		worker.JobTitle,
+		worker.Department_id,
+		worker.Department_name,
+		worker.AccessLevel,
+	)
+
+	if err != nil {
+		log.Printf("error generating token: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "token generation error",
+		})
+		return
+	}
+
+	c.SetCookie(
+		"auth_token",
+		token,
+		86400,
+		"/",
+		"",
+		false,
+		true,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "auth success",
+		"token":   token,
+		"worker": gin.H{
+			"id":              worker.UUID,
+			"name":            worker.Name,
+			"jobtitle":        worker.JobTitle,
+			"department_id":   worker.Department_id,
+			"department_name": worker.Department_name,
+			"accesslevel":     worker.AccessLevel,
+		},
+	})
 }
 
 func (h *workerHandler) ListDepartmentHandler(c *gin.Context) {
@@ -59,11 +140,10 @@ func (h *workerHandler) ListDepartmentHandler(c *gin.Context) {
 }
 
 func (h *workerHandler) Addworker(c *gin.Context) {
-	departmentName := c.Param("department")
 	var worker payloads.WorkerPayload
 
 	if err := c.BindJSON(&worker); err != nil {
-		log.Printf("server error: %v", err)
+		log.Printf("error while binding worker payload: %v", err)
 
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "bad json body",
@@ -72,9 +152,29 @@ func (h *workerHandler) Addworker(c *gin.Context) {
 		return
 	}
 
-	newWorker, err := h.workerService.CreateWorker(worker.Name, worker.JobTitle, departmentName, worker.Password)
+	requestingUser, err := h.workerService.GetWorkerByName(c.GetString("worker_name"))
+
 	if err != nil {
-		log.Printf("server error: %v", err)
+		log.Printf("error getting requesting user: %v\n", err)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "server error",
+		})
+
+		return
+	}
+	if requestingUser.AccessLevel < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message":     "your request was rejected",
+			"accesslevel": requestingUser.AccessLevel,
+		})
+
+		return
+	}
+
+	newWorker, err := h.workerService.CreateWorker(worker.Name, worker.JobTitle, requestingUser.Department_id, requestingUser.Department_name, worker.Password)
+	if err != nil {
+		log.Printf("error creating worker: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "server error",
 		})
@@ -94,6 +194,25 @@ func (h *workerHandler) DeleteWorker(c *gin.Context) {
 	if len(workerUUID) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "bad request",
+		})
+
+		return
+	}
+
+	requestingUser, err := h.workerService.GetWorkerByName(c.GetString("worker_name"))
+	if err != nil {
+		log.Printf("error getting requesting user: %v\n", err)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "server error",
+		})
+
+		return
+	}
+	if requestingUser.AccessLevel < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message":     "your request was rejected",
+			"accesslevel": requestingUser.AccessLevel,
 		})
 
 		return

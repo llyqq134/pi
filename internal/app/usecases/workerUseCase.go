@@ -15,7 +15,7 @@ func NewWorkerService(repo repointerfaces.WorkerRepo) services.WorkerService {
 	return &workerService{repo: repo}
 }
 
-func (s *workerService) CreateWorker(name, jobTitle, departament, password string) (*entities.Worker, error) {
+func (s *workerService) CreateWorker(name, jobTitle, department_id, department_name, password string) (*entities.Worker, error) {
 	var accesslevel int
 
 	switch jobTitle {
@@ -27,7 +27,7 @@ func (s *workerService) CreateWorker(name, jobTitle, departament, password strin
 		accesslevel = 1
 	}
 
-	worker := entities.NewWorker(name, jobTitle, departament, password, accesslevel)
+	worker := entities.NewWorker(name, jobTitle, department_id, department_name, password, accesslevel)
 
 	if err := s.repo.Create(context.Background(), worker); err != nil {
 		return &entities.Worker{}, err
@@ -38,6 +38,10 @@ func (s *workerService) CreateWorker(name, jobTitle, departament, password strin
 
 func (s *workerService) GetWokerByUUID(uuid string) (entities.Worker, error) {
 	return s.repo.GetByUUID(context.Background(), uuid)
+}
+
+func (s *workerService) GetWorkerByName(name string) (entities.Worker, error) {
+	return s.repo.GetByName(context.Background(), name)
 }
 
 func (s *workerService) GetAllWorkers() ([]entities.Worker, error) {

@@ -1,0 +1,26 @@
+CREATE TABLE workers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    jobtitle VARCHAR(255) NOT NULL,
+    department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
+    department_name VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    accesslevel INTEGER DEFAULT 1
+);
+
+INSERT INTO workers (name, jobtitle, department_id, department_name, password, accesslevel) VALUES
+    (
+        'qwe',
+        'admin',
+        (SELECT id FROM departments WHERE name = 'evil'),
+        'evil',
+        '123',
+        3
+)
+
+CREATE TABLE departments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL UNIQUE,
+);
+
+insert into departments (name) values ('evil')
