@@ -6,6 +6,7 @@ import (
 	"pi/internal/app/entities"
 	"pi/pkg/db"
 
+	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -20,21 +21,33 @@ func NewWorkerImpl(client db.Client) WorkerRepoImpl {
 }
 
 func (r *WorkerRepoImpl) Create(ctx context.Context, worker *entities.Worker) error {
+	var departmentUUID string
+	deptQuery := `SELECT id FROM departments WHERE name = $1`
+	err := r.Client.QueryRow(ctx, deptQuery, worker.Department).Scan(&departmentUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.Printf("department %s wasn't found: %v\n", worker.Department, err)
+			return err
+		}
+		log.Printf("error getting department uuid: %v", err)
+		return err
+	}
+
 	query := `
 	INSERT INTO
-	workers (name, jobtitle, departament, password, accesslevel)
+	workers (name, jobtitle, department, password, accesslevel)
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id
 	`
 
 	if err := r.Client.QueryRow(ctx, query,
-		&worker.Name, &worker.JobTitle, &worker.Department, &worker.Password, &worker.AcessLevel).
+		&worker.Name, &worker.JobTitle, departmentUUID, &worker.Password, &worker.AcessLevel).
 		Scan(&worker.UUID); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			log.Printf("SQL Error: %s\nDetail: %s\nWhere: %s\nCode: %s\nSQL state: %s",
 				pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState())
 
-			return nil
+			return err
 		}
 
 		return err
@@ -92,7 +105,8 @@ func (r *WorkerRepoImpl) GetAll(ctx context.Context) ([]entities.Worker, error) 
 
 func (r *WorkerRepoImpl) GetAllByDepartment(ctx context.Context, department string) ([]entities.Worker, error) {
 	query := `
-	SELECT id, name, jobtitle, department, password, accesslevel FROM workers WHERE department = $1
+	SELECT id, name, jobtitle, 
+	(SELECT id from departments WHERE name=$1), password, accesslevel FROM workers WHERE department = (SELECT id from departments WHERE name=$1)
 	`
 	rows, err := r.Client.Query(ctx, query, department)
 
