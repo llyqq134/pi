@@ -7,4 +7,5 @@ type WorkerService interface {
 	GetWokerByUUID(uuid string) (entities.Worker, error)
 	GetAllWorkers() ([]entities.Worker, error)
 	GetAllWorkersByDepartment(department string) ([]entities.Worker, error)
+	DeleteWorkerByUUID(uuid string) error
 }
