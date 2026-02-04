@@ -22,13 +22,13 @@ func NewWorkerImpl(client db.Client) WorkerRepoImpl {
 func (r *WorkerRepoImpl) Create(ctx context.Context, worker *entities.Worker) error {
 	query := `
 	INSERT INTO
-	workers (name, jobtitle, departament, hashpass, accesslevel)
+	workers (name, jobtitle, departament, password, accesslevel)
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id
 	`
 
 	if err := r.Client.QueryRow(ctx, query,
-		&worker.Name, &worker.JobTitle, &worker.Department, &worker.HashPass, &worker.AcessLevel).
+		&worker.Name, &worker.JobTitle, &worker.Department, &worker.Password, &worker.AcessLevel).
 		Scan(&worker.UUID); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			log.Printf("SQL Error: %s\nDetail: %s\nWhere: %s\nCode: %s\nSQL state: %s",
@@ -45,12 +45,12 @@ func (r *WorkerRepoImpl) Create(ctx context.Context, worker *entities.Worker) er
 
 func (r *WorkerRepoImpl) GetByUUID(ctx context.Context, uuid string) (entities.Worker, error) {
 	query := `
-		SELECT id, name, jobtitle, department, hashpass, accesslevel FROM workers WHERE id = $1
+		SELECT id, name, jobtitle, department, password, accesslevel FROM workers WHERE id = $1
 	`
 	var worker entities.Worker
 
 	if err := r.Client.QueryRow(ctx, query, uuid).Scan(
-		&worker.UUID, &worker.Name, &worker.JobTitle, &worker.HashPass, &worker.AcessLevel); err != nil {
+		&worker.UUID, &worker.Name, &worker.JobTitle, &worker.Password, &worker.AcessLevel); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			log.Printf("SQL Error: %s\nDetail: %s\nWhere: %s\nCode: %s\nSQL state: %s",
 				pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState())
@@ -65,7 +65,7 @@ func (r *WorkerRepoImpl) GetByUUID(ctx context.Context, uuid string) (entities.W
 
 func (r *WorkerRepoImpl) GetAll(ctx context.Context) ([]entities.Worker, error) {
 	query := `
-	SELECT id, name, jobtitle, department, hashpass, accesslevel FROM workers LIMIT 1000
+	SELECT id, name, jobtitle, department, password, accesslevel FROM workers LIMIT 1000
 	`
 	rows, err := r.Client.Query(ctx, query)
 
@@ -92,7 +92,7 @@ func (r *WorkerRepoImpl) GetAll(ctx context.Context) ([]entities.Worker, error) 
 
 func (r *WorkerRepoImpl) GetAllByDepartment(ctx context.Context, department string) ([]entities.Worker, error) {
 	query := `
-	SELECT id, name, jobtitle, department, hashpass, accesslevel FROM workers WHERE department = $1
+	SELECT id, name, jobtitle, department, password, accesslevel FROM workers WHERE department = $1
 	`
 	rows, err := r.Client.Query(ctx, query, department)
 
@@ -106,7 +106,7 @@ func (r *WorkerRepoImpl) GetAllByDepartment(ctx context.Context, department stri
 	for rows.Next() {
 		var worker entities.Worker
 		if err := rows.Scan(
-			&worker.UUID, &worker.Name, &worker.JobTitle, &worker.Department, &worker.HashPass, &worker.AcessLevel,
+			&worker.UUID, &worker.Name, &worker.JobTitle, &worker.Department, &worker.Password, &worker.AcessLevel,
 		); err != nil {
 			log.Printf("error scanning workers: %v\n", err)
 			return workers, err
@@ -120,11 +120,11 @@ func (r *WorkerRepoImpl) GetAllByDepartment(ctx context.Context, department stri
 
 func (r *WorkerRepoImpl) Update(ctx context.Context, worker *entities.Worker) error {
 	query := `
-		UPDATE workers SET name = $2, jobtitle = $3, department = $4, hashpass = $5, accesslevel = $6
+		UPDATE workers SET name = $2, jobtitle = $3, department = $4, password = $5, accesslevel = $6
 		WHERE id = $1
 	`
 
-	if _, err := r.Client.Exec(ctx, query, &worker.UUID, &worker.Name, &worker.JobTitle, &worker.Department, &worker.HashPass, &worker.AcessLevel); err != nil {
+	if _, err := r.Client.Exec(ctx, query, &worker.UUID, &worker.Name, &worker.JobTitle, &worker.Department, &worker.Password, &worker.AcessLevel); err != nil {
 		log.Printf("error updating worker: %v\n", err)
 
 		return err
