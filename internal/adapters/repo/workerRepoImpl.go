@@ -67,7 +67,7 @@ func (r *WorkerRepoImpl) GetByUUID(ctx context.Context, uuid string) (entities.W
 			log.Printf("SQL Error: %s\nDetail: %s\nWhere: %s\nCode: %s\nSQL state: %s",
 				pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState())
 
-			return entities.Worker{}, nil
+			return entities.Worker{}, err
 		}
 		return entities.Worker{}, err
 	}

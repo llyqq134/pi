@@ -24,3 +24,26 @@ CREATE TABLE departments (
 );
 
 insert into departments (name) values ('evil')
+
+CREATE TABLE equipment (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(100) NOT NULL,
+    serial_number VARCHAR(100) UNIQUE NOT NULL,
+    inventory_number VARCHAR(100) UNIQUE,
+    status VARCHAR(50) DEFAULT 'available',
+    location VARCHAR(255),
+);
+
+CREATE TABLE equipment_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    equipment_id UUID REFERENCES equipment(id) ON DELETE CASCADE,
+    worker_id UUID REFERENCES workers(id) ON DELETE SET NULL,
+    worker_name VARCHAR(255) NOT NULL,
+    department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
+    department_name VARCHAR(255) NOT NULL,
+    issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    returned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expected_return_date DATE,
+    status VARCHAR(50) DEFAULT 'issued',
+);
