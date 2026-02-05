@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сотрудники</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div>
+        <a href="/dashboard.html">Главная</a>
+        <a href="/workers.html">Сотрудники</a>
+        <a href="/departments.html">Отделы</a>
+        <a href="/equipment.html">Оборудование</a>
+        <a href="/records.html">Выдача</a>
+        <a href="/reports.html">Отчёты</a>
+      </div>
+      <div>
+        <span class="user-info" id="userInfo"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+      </div>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>Сотрудники отдела</h2>
+      <div id="message" class="message hidden"></div>
+      <div class="form-inline" id="departmentSelectWrap">
+        <label>Отдел:</label>
+        <select id="departmentSelect">
+          <option value="">Загрузка...</option>
+        </select>
+        <button class="btn btn-primary" onclick="loadWorkers()">Показать</button>
+      </div>
+      <div id="addWorkerForm" class="form-inline hidden">
+        <input type="text" id="newWorkerName" placeholder="Имя">
+        <input type="text" id="newWorkerJob" placeholder="Должность">
+        <input type="password" id="newWorkerPass" placeholder="Пароль">
+        <button class="btn btn-primary" onclick="addWorkerSubmit()">Добавить</button>
+      </div>
+      <table id="workersTable">
+        <thead>
+          <tr>
+            <th>Имя</th>
+            <th>Должность</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="workersBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script>
+    requireAuth();
+    const user = getCurrentUser();
+    document.getElementById('userInfo').textContent = user?.name || '';
+    const accessLevel = user?.accesslevel ?? 0;
+    if (accessLevel >= 2) {
+      document.getElementById('addWorkerForm').classList.remove('hidden');
+    }
+
+    async function loadDepartments() {
+      const deps = await getDepartments();
+      const sel = document.getElementById('departmentSelect');
+      sel.innerHTML = deps.map(d => '<option value="' + (d.name || d.Name) + '">' + (d.name || d.Name) + '</option>').join('');
+      if (user?.department_name) {
+        sel.value = user.department_name;
+        loadWorkers();
+      }
+    }
+
+    async function loadWorkers() {
+      const dept = document.getElementById('departmentSelect').value;
+      if (!dept) return;
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      try {
+        const workers = await getWorkersByDepartment(dept);
+        const tbody = document.getElementById('workersBody');
+        const list = Array.isArray(workers) ? workers : [];
+        tbody.innerHTML = list.map(w => {
+          const id = w.uuid || w.UUID || w.id || w.ID;
+          const name = w.name || w.Name || '';
+          const job = w.jobtitle || w.JobTitle || '';
+          const delBtn = accessLevel >= 2 ? '<button class="btn btn-danger" onclick="deleteWorkerClick(\'' + id + '\')">Удалить</button>' : '';
+          return '<tr><td>' + name + '</td><td>' + job + '</td><td>' + delBtn + '</td></tr>';
+        }).join('') || '<tr><td colspan="3">Нет сотрудников</td></tr>';
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка загрузки';
+        msg.className = 'message error';
+      }
+    }
+
+    async function addWorkerSubmit() {
+      const name = document.getElementById('newWorkerName').value.trim();
+      const job = document.getElementById('newWorkerJob').value.trim();
+      const pass = document.getElementById('newWorkerPass').value;
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      if (!name || !pass) {
+        msg.textContent = 'Введите имя и пароль';
+        msg.className = 'message error';
+        return;
+      }
+      try {
+        await addWorker(name, job, pass);
+        msg.textContent = 'Сотрудник добавлен';
+        msg.className = 'message success';
+        document.getElementById('newWorkerName').value = '';
+        document.getElementById('newWorkerJob').value = '';
+        document.getElementById('newWorkerPass').value = '';
+        loadWorkers();
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка';
+        msg.className = 'message error';
+      }
+    }
+
+    async function deleteWorkerClick(id) {
+      if (!confirm('Удалить сотрудника?')) return;
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      try {
+        await deleteWorker(id);
+        msg.textContent = 'Сотрудник удалён';
+        msg.className = 'message success';
+        loadWorkers();
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка';
+        msg.className = 'message error';
+      }
+    }
+
+    loadDepartments();
+  </script>
+</body>
+</html>

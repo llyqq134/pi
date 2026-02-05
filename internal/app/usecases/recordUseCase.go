@@ -19,6 +19,8 @@ func NewRecordService(repo repointerfaces.RecordsRepo) services.RecordService {
 func (us *recordService) CreateRecord(
 	equipmentId, workerId, workerName, departmentId, departmentName string, expectedReturnDate time.Time, status string) (*entities.Records, error) {
 	record := entities.NewRecords(equipmentId, workerId, workerName, departmentId, departmentName, expectedReturnDate, status)
+	record.IssuedAt = time.Now()
+	// ReturnedAt остаётся нулевым — оборудование ещё не возвращено
 	return record, us.repo.Create(context.Background(), record)
 }
 

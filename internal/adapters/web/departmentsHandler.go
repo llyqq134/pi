@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"pi/internal/adapters/payloads"
 	"pi/internal/app/interfaces/services"
+	"pi/pkg/utils/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ func NewDepartmentHandler(departmentService services.DepartmentService) Handler 
 
 func (h *departmentHandler) Register(router *gin.Engine) {
 	departments := router.Group("/departments")
+	departments.Use(middleware.AuthMiddleware())
 	{
 		departments.GET("/", h.ListAllDepartmentsHandler)
 		departments.POST("/new", h.AddDepartmentHandler)
@@ -42,6 +44,15 @@ func (h *departmentHandler) ListAllDepartmentsHandler(c *gin.Context) {
 }
 
 func (h *departmentHandler) DeleteDepartmentHandler(c *gin.Context) {
+	accessLevel, _ := c.Get("access_level")
+	if level, ok := accessLevel.(int); !ok || level < 2 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"message":     "доступ запрещён: требуется уровень 2 или выше",
+			"accesslevel": accessLevel,
+		})
+		return
+	}
+
 	departmentName := c.Param("department")
 	if len(departmentName) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -66,6 +77,15 @@ func (h *departmentHandler) DeleteDepartmentHandler(c *gin.Context) {
 }
 
 func (h *departmentHandler) AddDepartmentHandler(c *gin.Context) {
+	accessLevel, _ := c.Get("access_level")
+	if level, ok := accessLevel.(int); !ok || level < 2 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"message":     "доступ запрещён: требуется уровень 2 или выше",
+			"accesslevel": accessLevel,
+		})
+		return
+	}
+
 	var departament payloads.DepartmentPayload
 
 	if err := c.BindJSON(&departament); err != nil {

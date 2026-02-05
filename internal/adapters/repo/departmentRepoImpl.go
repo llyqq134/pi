@@ -36,7 +36,7 @@ func (r *DepartmentRepoImpl) Create(ctx context.Context, departament *entities.D
 	return nil
 }
 
-func (r *DepartmentRepoImpl) GetAll(ctx context.Context, uuid string) ([]entities.Department, error) {
+func (r *DepartmentRepoImpl) GetAll(ctx context.Context) ([]entities.Department, error) {
 	query := `
 	SELECT id, name FROM departments LIMIT 1000
 	`

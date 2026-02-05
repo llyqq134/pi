@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Отчёты</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div>
+        <a href="/dashboard.html">Главная</a>
+        <a href="/workers.html">Сотрудники</a>
+        <a href="/departments.html">Отделы</a>
+        <a href="/equipment.html">Оборудование</a>
+        <a href="/records.html">Выдача</a>
+        <a href="/reports.html">Отчёты</a>
+      </div>
+      <div>
+        <span class="user-info" id="userInfo"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+      </div>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>Экспорт отчёта по выдаче оборудования</h2>
+      <div id="message" class="message hidden"></div>
+      <div class="report-form">
+        <label>Дата начала:</label>
+        <input type="date" id="startDate">
+        <label>Дата окончания:</label>
+        <input type="date" id="endDate">
+        <button class="btn btn-primary" onclick="downloadReportClick()">Скачать PDF</button>
+      </div>
+      <p class="error-text">Даты необязательны. Если не указаны — экспортируются все записи.</p>
+    </div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('userInfo').textContent = getCurrentUser()?.name || '';
+
+    async function downloadReportClick() {
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      const startDate = document.getElementById('startDate').value || '';
+      const endDate = document.getElementById('endDate').value || '';
+      try {
+        await downloadReport(startDate, endDate);
+        msg.textContent = 'Отчёт скачан';
+        msg.className = 'message success';
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка формирования отчёта';
+        msg.className = 'message error';
+      }
+    }
+  </script>
+</body>
+</html>

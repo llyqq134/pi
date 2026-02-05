@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Выдача оборудования</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div>
+        <a href="/dashboard.html">Главная</a>
+        <a href="/workers.html">Сотрудники</a>
+        <a href="/departments.html">Отделы</a>
+        <a href="/equipment.html">Оборудование</a>
+        <a href="/records.html">Выдача</a>
+        <a href="/reports.html">Отчёты</a>
+      </div>
+      <div>
+        <span class="user-info" id="userInfo"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+      </div>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>Оформление выдачи оборудования</h2>
+      <div id="message" class="message hidden"></div>
+      <form id="recordForm">
+        <div class="form-group">
+          <label for="equipmentId">Оборудование</label>
+          <select id="equipmentId" name="equipmentId" required>
+            <option value="">Загрузка...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="departmentSelect">Отдел (кому выдать)</label>
+          <select id="departmentSelect" name="departmentSelect" required>
+            <option value="">Загрузка...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="workerSelect">Сотрудник (получатель)</label>
+          <select id="workerSelect" name="workerSelect" required>
+            <option value="">Сначала выберите отдел</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="expectedReturnDate">Ожидаемая дата возврата (ГГГГ-ММ-ДД)</label>
+          <input type="date" id="expectedReturnDate" name="expectedReturnDate" required>
+        </div>
+        <div class="form-group">
+          <label for="status">Статус</label>
+          <select id="status" name="status">
+            <option value="issued">Выдано</option>
+            <option value="returned">Возвращено</option>
+            <option value="overdue">Просрочено</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Оформить выдачу</button>
+      </form>
+    </div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('userInfo').textContent = getCurrentUser()?.name || '';
+
+    async function loadEquipmentSelect() {
+      try {
+        const equip = await getEquipment();
+        const sel = document.getElementById('equipmentId');
+        const list = Array.isArray(equip) ? equip : [];
+        sel.innerHTML = '<option value="">Выберите оборудование</option>' +
+          list.map(e => {
+            const id = e.id || e.ID || '';
+            const name = (e.name || e.Name || '-') + ' (' + (e.inventorynumber || e.InventoryNumber || id) + ')';
+            return '<option value="' + id + '">' + name + '</option>';
+          }).join('');
+      } catch (e) {
+        document.getElementById('equipmentId').innerHTML = '<option value="">Ошибка загрузки</option>';
+      }
+    }
+
+    async function loadDepartmentSelect() {
+      try {
+        const deps = await getDepartments();
+        const sel = document.getElementById('departmentSelect');
+        const list = Array.isArray(deps) ? deps : [];
+        sel.innerHTML = '<option value="">Выберите отдел</option>' +
+          list.map(d => {
+            const id = d.id || d.ID || '';
+            const name = d.name || d.Name || '-';
+            return '<option value="' + id + '">' + name + '</option>';
+          }).join('');
+      } catch (e) {
+        document.getElementById('departmentSelect').innerHTML = '<option value="">Ошибка загрузки</option>';
+      }
+    }
+
+    async function loadWorkerSelect(departmentName) {
+      const sel = document.getElementById('workerSelect');
+      if (!departmentName) {
+        sel.innerHTML = '<option value="">Сначала выберите отдел</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">Загрузка...</option>';
+      try {
+        const workers = await getWorkersByDepartment(departmentName);
+        const list = Array.isArray(workers) ? workers : [];
+        sel.innerHTML = '<option value="">Выберите сотрудника</option>' +
+          list.map(w => {
+            const id = w.uuid || w.UUID || w.id || w.ID || '';
+            const name = w.name || w.Name || '-';
+            return '<option value="' + id + '">' + name + '</option>';
+          }).join('');
+      } catch (e) {
+        sel.innerHTML = '<option value="">Ошибка загрузки</option>';
+      }
+    }
+
+    loadEquipmentSelect();
+    loadDepartmentSelect();
+
+    document.getElementById('departmentSelect').addEventListener('change', function() {
+      const opt = this.options[this.selectedIndex];
+      const name = opt && opt.value ? opt.text : '';
+      loadWorkerSelect(name);
+    });
+
+    document.getElementById('recordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      const equipmentId = document.getElementById('equipmentId').value.trim();
+      const departmentOpt = document.getElementById('departmentSelect').options[document.getElementById('departmentSelect').selectedIndex];
+      const workerOpt = document.getElementById('workerSelect').options[document.getElementById('workerSelect').selectedIndex];
+      const departmentId = departmentOpt ? departmentOpt.value : '';
+      const departmentName = departmentOpt ? departmentOpt.text : '';
+      const workerId = workerOpt ? workerOpt.value : '';
+      const workerName = workerOpt ? workerOpt.text : '';
+      const expectedReturnDate = document.getElementById('expectedReturnDate').value;
+      const status = document.getElementById('status').value;
+      if (!departmentId || !workerId) {
+        msg.textContent = 'Выберите отдел и сотрудника';
+        msg.className = 'message error';
+        return;
+      }
+      try {
+        await addRecord(equipmentId, expectedReturnDate, status, departmentId, departmentName, workerId, workerName);
+        msg.textContent = 'Запись о выдаче создана';
+        msg.className = 'message success';
+        document.getElementById('recordForm').reset();
+        loadWorkerSelect('');
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка';
+        msg.className = 'message error';
+      }
+    });
+  </script>
+</body>
+</html>

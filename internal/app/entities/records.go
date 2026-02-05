@@ -5,6 +5,7 @@ import "time"
 type Records struct {
 	ID                 string    `json:"id"`
 	EquipmentId        string    `json:"equipment_id"`
+	EquipmentName      string    `json:"equipment_name"` // human-readable name for report
 	WorkerId           string    `json:"worker_id"`
 	WorkerName         string    `json:"worker_name"`
 	DepartmentID       string    `json:"department_id"`

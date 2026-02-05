@@ -59,7 +59,7 @@ func (r *EquipmentRepoImpl) GetAll(ctx context.Context) ([]entities.Equipment, e
 	for rows.Next() {
 		var equipment entities.Equipment
 		if err := rows.Scan(
-			&equipment.ID, &equipment.Name, &equipment.SerialNumber,
+			&equipment.ID, &equipment.Name, &equipment.Type, &equipment.SerialNumber,
 			&equipment.InventoryNumber, &equipment.Status, &equipment.Location); err != nil {
 			log.Printf("error scanning equipment: %v\n", err)
 

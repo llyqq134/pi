@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель управления</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div>
+        <a href="/dashboard.html">Главная</a>
+        <a href="/workers.html">Сотрудники</a>
+        <a href="/departments.html">Отделы</a>
+        <a href="/equipment.html">Оборудование</a>
+        <a href="/records.html">Выдача</a>
+        <a href="/reports.html">Отчёты</a>
+      </div>
+      <div>
+        <span class="user-info" id="userInfo"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+      </div>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>Добро пожаловать</h2>
+      <p id="welcomeText">Вы вошли в систему учёта оборудования.</p>
+    </div>
+    <div class="card">
+      <h2>Быстрые ссылки</h2>
+      <p><a href="/workers.html" >Сотрудники</a> — просмотр и управление сотрудниками отдела</p>
+      <p><a href="/departments.html">Отделы</a> — список отделов организации</p>
+      <p><a href="/equipment.html">Оборудование</a> — каталог оборудования</p>
+      <p><a href="/records.html">Выдача</a> — оформление выдачи оборудования</p>
+      <p><a href="/reports.html">Отчёты</a> — экспорт отчётов в PDF</p>
+    </div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script>
+    requireAuth();
+    const user = getCurrentUser();
+    document.getElementById('userInfo').textContent = user?.name ? user.name + ' (' + (user.jobtitle || '') + ')' : '';
+    if (user?.name) {
+      document.getElementById('welcomeText').textContent = user.name + ', вы вошли в систему учёта оборудования.';
+    }
+  </script>
+</body>
+</html>

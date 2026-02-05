@@ -13,4 +13,5 @@ type WorkerRepo interface {
 	GetAllByDepartment(ctx context.Context, department string) ([]entities.Worker, error)
 	Update(ctx context.Context, worker *entities.Worker) error
 	DeleteByUUID(ctx context.Context, uuid string) error
+	DeleteByDepartmentName(ctx context.Context, departmentName string) error
 }

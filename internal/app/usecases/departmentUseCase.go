@@ -8,11 +8,12 @@ import (
 )
 
 type departamentService struct {
-	repo repointerfaces.DepartemntRepo
+	repo       repointerfaces.DepartemntRepo
+	workerRepo repointerfaces.WorkerRepo
 }
 
-func NewDepartmentService(repo repointerfaces.DepartemntRepo) services.DepartmentService {
-	return &departamentService{repo: repo}
+func NewDepartmentService(repo repointerfaces.DepartemntRepo, workerRepo repointerfaces.WorkerRepo) services.DepartmentService {
+	return &departamentService{repo: repo, workerRepo: workerRepo}
 }
 
 func (s *departamentService) CreateDepartment(name string) (*entities.Department, error) {
@@ -25,5 +26,9 @@ func (s *departamentService) GetAllDepartments() ([]entities.Department, error) 
 }
 
 func (s *departamentService) DeleteDepartmentByName(name string) error {
+	// Каскадное удаление: сначала удаляем сотрудников отдела
+	if err := s.workerRepo.DeleteByDepartmentName(context.Background(), name); err != nil {
+		return err
+	}
 	return s.repo.DeleteByName(context.Background(), name)
 }

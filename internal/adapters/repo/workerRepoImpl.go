@@ -125,8 +125,9 @@ func (r *WorkerRepoImpl) GetAll(ctx context.Context) ([]entities.Worker, error) 
 
 func (r *WorkerRepoImpl) GetAllByDepartment(ctx context.Context, department string) ([]entities.Worker, error) {
 	query := `
-	SELECT id, name, jobtitle, 
-	(SELECT id from departments WHERE name=$1), password, accesslevel FROM workers WHERE department_id = (SELECT id from departments WHERE name=$1)
+	SELECT id, name, jobtitle, department_id, department_name, password, accesslevel 
+	FROM workers 
+	WHERE department_name = $1
 	`
 	rows, err := r.Client.Query(ctx, query, department)
 
@@ -180,5 +181,14 @@ func (r *WorkerRepoImpl) DeleteByUUID(ctx context.Context, uuid string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *WorkerRepoImpl) DeleteByDepartmentName(ctx context.Context, departmentName string) error {
+	query := `DELETE FROM workers WHERE department_name = $1`
+	if _, err := r.Client.Exec(ctx, query, departmentName); err != nil {
+		log.Printf("error deleting workers by department %s: %v\n", departmentName, err)
+		return err
+	}
 	return nil
 }

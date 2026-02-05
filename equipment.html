@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Оборудование</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div>
+        <a href="/dashboard.html">Главная</a>
+        <a href="/workers.html">Сотрудники</a>
+        <a href="/departments.html">Отделы</a>
+        <a href="/equipment.html">Оборудование</a>
+        <a href="/records.html">Выдача</a>
+        <a href="/reports.html">Отчёты</a>
+      </div>
+      <div>
+        <span class="user-info" id="userInfo"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+      </div>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>Оборудование</h2>
+      <div id="message" class="message hidden"></div>
+      <button class="btn btn-secondary" onclick="loadEquipment()">Обновить</button>
+      <table id="equipmentTable">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Тип</th>
+            <th>Серийный номер</th>
+            <th>Инв. номер</th>
+            <th>Статус</th>
+            <th>Место</th>
+          </tr>
+        </thead>
+        <tbody id="equipmentBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('userInfo').textContent = getCurrentUser()?.name || '';
+
+    async function loadEquipment() {
+      const msg = document.getElementById('message');
+      msg.className = 'message hidden';
+      try {
+        const equip = await getEquipment();
+        const tbody = document.getElementById('equipmentBody');
+        const list = Array.isArray(equip) ? equip : [];
+        tbody.innerHTML = list.map(e => {
+          const name = e.name || e.Name || '-';
+          const type = e.type || e.Type || '-';
+          const sn = e.serialnumber || e.SerialNumber || '-';
+          const inv = e.inventorynumber || e.InventoryNumber || '-';
+          const status = e.status || e.Status || '-';
+          const loc = e.location || e.Location || '-';
+          return '<tr><td>' + name + '</td><td>' + type + '</td><td>' + sn + '</td><td>' + inv + '</td><td>' + status + '</td><td>' + loc + '</td></tr>';
+        }).join('') || '<tr><td colspan="6">Нет оборудования</td></tr>';
+      } catch (e) {
+        msg.textContent = e.message || 'Ошибка загрузки';
+        msg.className = 'message error';
+      }
+    }
+
+    loadEquipment();
+  </script>
+</body>
+</html>
